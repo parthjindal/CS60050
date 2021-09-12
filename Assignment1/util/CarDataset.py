@@ -29,7 +29,7 @@ class CarDataset:
         return self._X
 
     @property
-    def target(self) -> pd.Series:
+    def targets(self) -> pd.Series:
         return self._Y
 
     @property
