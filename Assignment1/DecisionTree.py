@@ -1,4 +1,3 @@
-from operator import methodcaller
 import pandas as pd
 from util import information_gain, gini_gain
 import graphviz
@@ -25,6 +24,7 @@ class DecisionTree:
         self.min_samples_leaf = min_samples_leaf
         self.criterion = criterion
         self.tree = None
+        self.final_depth = 0
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
         """[summary]
@@ -78,6 +78,7 @@ class DecisionTree:
         Returns:
             Any: [description]
         """
+        self.final_depth = max(self.final_depth, depth)
         if depth >= self.max_depth:
             return self._get_leaf(y)
         if len(X) <= self.min_samples_leaf:
@@ -150,7 +151,7 @@ class DecisionTree:
             "children": []
         }
 
-    def print_tree(self, root: Dict, metadata) -> None:
+    def print_tree(self, root: Dict, labels) -> None:
         gra = graphviz.Digraph(
             format="png",
             node_attr={
@@ -161,7 +162,7 @@ class DecisionTree:
             }
         )
         self.__render_index = 0
-        self._print_tree(root, gra, metadata)
+        self._print_tree(root, gra, labels)
         gra.render("tree.gv", view=True)
 
     def _print_tree(self, root: Dict, gra: graphviz.Digraph, labels) -> None:
