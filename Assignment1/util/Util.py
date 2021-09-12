@@ -4,12 +4,26 @@ import graphviz
 import pandas as pd
 
 
-def gini_index(targets):
+def gini_index(targets) -> float:
+    """
+    Computes the gini index for a given target labels.
+    Arguments:
+        targets: A numpy array of shape (n_samples, )
+    Returns:
+        The gini index for the given target labels.
+    """
     label_count = np.bincount(targets)
     return 1 - np.sum((label_count / len(targets)) ** 2)
 
 
-def entropy(targets):
+def entropy(targets) -> float:
+    """
+    Computes the entropy for a given target labels.
+    Arguments:
+        targets: A numpy array of shape (n_samples, )
+    Returns:
+        The entropy for the given target labels.
+    """
     label_count = np.bincount(targets).astype(float)
     label_count += 1e-7
     return -np.sum((label_count / len(targets)) * np.log2(label_count / len(targets)))
@@ -40,7 +54,7 @@ def gini_gain(data: pd.DataFrame, attribute: str, targets: pd.Series) -> float:
     return init_gini - new_gini  # Return the gini gain
 
 
-def information_gain(data: pd.DataFrame, attribute: str, targets: pd.Series):
+def information_gain(data: pd.DataFrame, attribute: str, targets: pd.Series) -> float:
     """
     Computes the information gain for a given attribute and target labels.
     Arguments:
