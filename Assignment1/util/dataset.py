@@ -26,11 +26,11 @@ class CarDataset:
 
     @property
     def data(self) -> pd.DataFrame:
-        return self._X
+        return self.df.iloc[:, :-1]
 
     @property
     def targets(self) -> pd.Series:
-        return self._Y
+        return self.df.iloc[:, -1]
 
     @property
     def metadata(self) -> Dict:
@@ -58,16 +58,13 @@ class CarDataset:
         Utilitiy function to read the data from data file
 
         """
-        df = pd.read_csv(
+        self.df = pd.read_csv(
             os.path.join(self.root, self.filename),
             names=self.headers,
         )
-        for col in df.columns:
-            df[col], col_map = pd.factorize(df[col])
+        for col in self.df.columns:
+            self.df[col], col_map = pd.factorize(self.df[col])
             self._metadata[col] = col_map.tolist()
-
-        self._X = df.iloc[:, :-1]
-        self._Y = df.iloc[:, -1]
 
     def download(self):
         """
@@ -90,8 +87,3 @@ class CarDataset:
             if not os.path.exists(os.path.join(self.root, fname[1])):
                 return False
         return True
-
-
-if __name__ == '__main__':
-    dataset = CarDataset(root='../dataset', download=False)
-    print(dataset.target)

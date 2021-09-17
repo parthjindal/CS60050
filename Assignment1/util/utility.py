@@ -1,6 +1,5 @@
+from typing import List, Tuple
 import numpy as np
-import matplotlib.pyplot as plt
-import graphviz
 import pandas as pd
 
 
@@ -77,14 +76,102 @@ def information_gain(data: pd.DataFrame, attribute: str, targets: pd.Series) -> 
     return init_entropy - new_entropy
 
 
-def test():
-    from util import CarDataset
-    dataset = CarDataset(root="dataset")
-    data = dataset.data
-    targets = dataset.targets
-    print("Gini gain: ", gini_gain(data, "buying", targets))
-    print("Information gain: ", information_gain(data, "buying", targets))
+def shuffle_dataset(dataset: pd.DataFrame):
+    """
+    Shuffles the dataset and the target labels.
+    Arguments:
+        data: A numpy array of shape (n_samples, n_features)
+        targets: A numpy array of shape (n_samples, )
+    Returns:
+        A shuffled dataset and target labels.
+    """
+    dataset = dataset.sample(frac=1, replace=False)
+    return dataset
 
 
-if __name__ == '__main__':
-    test()
+def split_dataset(
+    data: pd.DataFrame,
+    targets: pd.Series,
+    split_size: float = 0.2
+) -> Tuple[Tuple[pd.DataFrame, pd.Series], Tuple[pd.DataFrame, pd.Series]]:
+    num_samples = data.shape[0]
+    num_train = int(num_samples*split_size)
+
+    train_data = data.iloc[:num_train]
+    train_targets = targets.iloc[:num_train]
+
+    valid_data = data.iloc[num_train:]
+    valid_targets = targets.iloc[num_train:]
+
+    return (train_data, train_targets), (valid_data, valid_targets)
+
+
+def get_metrics(
+    y_pred=None,
+    y_true=None,
+    metrics: List[str] = ['Accuracy'],
+    classes: List[str] = None,
+) -> None:
+
+    if isinstance(y_pred, np.ndarray) == False:
+        y_pred = y_pred.to_numpy()
+    if isinstance(y_true, np.ndarray) == False:
+        y_true = y_true.to_numpy()
+
+    results = {}
+    for metric in metrics:
+        if metric == 'Accuracy':
+            results[metric] = accuracy(y_true, y_pred)
+        elif metric == 'Precision':
+            results[metric] = []
+            for i, label in enumerate(classes):
+                results[metric].append(precision_score(
+                    y_true, y_pred, label=i))
+        elif metric == 'Recall':
+            results[metric] = []
+            for i, label in enumerate(classes):
+                results[metric].append(recall_score(
+                    y_true, y_pred, label=i))
+        elif metric == 'F1':
+            results[metric] = []
+            for i, label in enumerate(classes):
+                results[metric].append(f1_score(
+                    y_true, y_pred, label=i))
+        elif metric == 'Confusion Matrix':
+            results[metric] = confusion_matrix(
+                y_true, y_pred, labels=classes)
+        else:
+            raise ValueError('Unknown metric: {}'.format(metric))
+    return results
+
+
+def accuracy(y_true, y_pred):
+    return np.mean(y_true == y_pred)
+
+
+def precision_score(y_true, y_pred, label: int):
+    true_pos = np.sum(np.logical_and(y_true == label, y_pred == label))
+    return true_pos / (np.sum(y_pred == label) + 1e-7)
+
+
+def recall_score(y_true, y_pred, label: int):
+    true_pos = np.sum(np.logical_and(y_true == label, y_pred == label))
+    return true_pos / np.sum(y_true == label)
+
+
+def f1_score(y_true, y_pred, label: int):
+    precision = precision_score(y_true, y_pred, label)
+    recall = recall_score(y_true, y_pred, label)
+    return 2 * (precision * recall) / (precision + recall + 1e-7)
+
+
+def confusion_matrix(y_true, y_pred, labels: List = []):
+    matrix = np.zeros((len(labels), len(labels)))
+    for label, label_name in enumerate(labels):
+        true_pos = np.sum(np.logical_and(y_true == label, y_pred == label))
+        matrix[label, label] = true_pos
+        for i, other_label in enumerate(labels):
+            if i != label:
+                matrix[label, i] = np.sum(
+                    np.logical_and(y_true == label, y_pred == i))
+    return matrix
