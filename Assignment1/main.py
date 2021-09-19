@@ -260,11 +260,11 @@ def main(args):
 if __name__ == '__main__':
     # process_data()
     parser = argparse.ArgumentParser(description='Decision Tree')
-    parser.add_argument('--max_depth', type=int, default=6,
+    parser.add_argument('--max_depth', type=int, default=5,
                         help='Maximum depth of the tree')
     parser.add_argument('--min_samples', type=int, default=1,
                         help='Minimum number of samples in a leaf')
-    parser.add_argument('--criterion', type=str, default='gini',
+    parser.add_argument('--criterion', type=str, default='ig',
                         help='Split criteria', choices=['gini', 'ig'])
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--verbose', action='store_true')
