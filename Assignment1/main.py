@@ -172,7 +172,7 @@ def compare_heights(
     plt.show()
 
 
-def prune_tree(dt: DecisionTree, x_valid, y_valid, class_names):
+def prune_tree(dt: DecisionTree, method, x_valid, y_valid, class_names):
     """
     Prunes the tree using the validation set.
     Arguments:
@@ -204,7 +204,7 @@ def prune_tree(dt: DecisionTree, x_valid, y_valid, class_names):
     print(tabulate(cnf_matrix, headers='keys', tablefmt='psql'))
 
     print("\n--------------------After Pruning Statistics-----------------")
-    dt.prune_tree('reduced-error', x_valid, y_valid)
+    dt.prune_tree(method,x_valid, y_valid)
 
     y_preds = dt.predict(x_valid)
     results = get_metrics(y_valid, y_preds, metrics, class_names)
@@ -272,10 +272,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     seed_everything(args.seed)
-    # compare_criteria(num_runs=10, args=args)
+    
+    compare_criteria(num_runs=10, args=args)
+    
     dt, dataset, _ = average_runs(args, 10, args.verbose)
-    # (x_train, y_train), (x_valid, y_valid) = split_dataset(
-    #     dataset.data, dataset.targets, 0.8)
-    # prune_tree(dt, x_valid, y_valid, dataset.metadata['class'])
+    (x_train, y_train), (x_valid, y_valid) = split_dataset(
+        dataset.data, dataset.targets, 0.8)
+    
+    prune_tree(dt, 'chi', x_valid, y_valid, dataset.metadata['class'])
 
-    # compare_heights(args, num_runs=10)
+    compare_heights(args, num_runs=3)
