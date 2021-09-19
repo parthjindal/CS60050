@@ -4,7 +4,6 @@ from util import CarDataset, split_dataset, shuffle_dataset, \
 from decision_tree import DecisionTree
 import numpy as np
 import matplotlib.pyplot as plt
-import random
 import argparse
 from tabulate import tabulate
 
@@ -109,6 +108,7 @@ def average_runs(
 
     mean_acc, ci = find_ci_interval(accs, confidence=0.95)
 
+    verbose = True
     if verbose:
         class_names = best_dataset.metadata['class']
         print(f"\nMean Accuracy: {mean_acc*100:.2f}%")
@@ -131,7 +131,7 @@ def average_runs(
             cnf_matrix[class_names[i]] = best_result['Confusion Matrix'][i]
 
         print(tabulate(cnf_matrix, headers='keys', tablefmt='psql'))
-
+        best_dt.print_tree(best_dataset.metadata)
     return best_dt, best_dataset, best_result
 
 
@@ -156,8 +156,9 @@ def compare_heights(
     means, ci = find_ci_interval(results, confidence=0.95)
     h = ci[1] - means
 
-    # plot the height vs accuracy with error bars (95% CI)
-    plt.errorbar(heights, means, yerr=h)
+    # plot the height vs accuracy with error bars (95% CI) with circles at the mean and connecting lines
+    plt.errorbar(heights, means, yerr=h, fmt='--o',
+                 dash_capstyle='round', capsize=5)
     plt.xlabel("Max Tree Height")
     plt.ylabel("Accuracy")
     plt.show()
@@ -203,15 +204,15 @@ def prune_tree(dt: DecisionTree, x_valid, y_valid, class_names):
     print(tabulate(cnf_matrix, headers='keys', tablefmt='psql'))
 
     print("\n--------------------After Pruning Statistics-----------------")
-    dt.prune_tree(x_valid, y_valid)
-    
+    dt.prune_tree('reduced-error', x_valid, y_valid)
+
     y_preds = dt.predict(x_valid)
     results = get_metrics(y_valid, y_preds, metrics, class_names)
-    
+
     print(f"\nValidation Set Metrics:")
     print("Accuracy: ", '%.2f' % (results['Accuracy']*100), "%")
     print("Number of Nodes: {}".format(dt.num_nodes))
-    
+
     stats = {
         'Class': class_names,
         'Precision': results['Precision'],
@@ -271,10 +272,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     seed_everything(args.seed)
-    # compare_criteria(num_runs=3, args=args)
-    dt, dataset, _ = average_runs(args, 15)
-    (x_train, y_train), (x_valid, y_valid) = split_dataset(
-        dataset.data, dataset.targets, 0.8)
-    prune_tree(dt, x_valid, y_valid, dataset.metadata['class'])
+    # compare_criteria(num_runs=10, args=args)
+    dt, dataset, _ = average_runs(args, 10, args.verbose)
+    # (x_train, y_train), (x_valid, y_valid) = split_dataset(
+    #     dataset.data, dataset.targets, 0.8)
+    # prune_tree(dt, x_valid, y_valid, dataset.metadata['class'])
 
-    # compare_heights(args, num_runs=5)
+    # compare_heights(args, num_runs=10)

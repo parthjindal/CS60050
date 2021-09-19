@@ -110,3 +110,7 @@ def split_dataset(
     valid_targets = targets.iloc[num_train:]
 
     return (train_data, train_targets), (valid_data, valid_targets)
+
+
+def chi2_contingency(matrx):
+    return stats.chi2_contingency(matrx)

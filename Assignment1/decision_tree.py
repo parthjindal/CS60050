@@ -1,9 +1,11 @@
-from util.utility import shuffle_dataset, split_dataset
+from util import shuffle_dataset, split_dataset, chi2_contingency
 import pandas as pd
 from util import information_gain, gini_gain
 import graphviz
 from typing import List, Tuple, Dict
 from util import CarDataset
+import numpy as np
+
 
 
 class DecisionTree():
@@ -27,6 +29,7 @@ class DecisionTree():
         self.tree = None
         self.final_depth = 0
         self.num_nodes = 0
+        self.num_classes = 4
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
         """
@@ -69,7 +72,7 @@ class DecisionTree():
             if attr_val == x[root["feature"]]:
                 return self._predict_one(x, child_root)
 
-    def _build_tree(self, X: pd.DataFrame, y: pd.Series, depth: int = 0, attr_list: List[str] = []) -> Dict:
+    def _build_tree(self, X: pd.DataFrame, y: pd.Series, depth: int = 0, parent: Dict = None, attr_list: List[str] = []) -> Dict:
         """
         Utility function to build the decision tree by reusing the recursive function.
         Args:
@@ -83,21 +86,29 @@ class DecisionTree():
         self.num_nodes += 1
         self.final_depth = max(self.final_depth, depth)
         if depth >= self.max_depth:
-            return self._get_leaf(y)
+            return self._get_leaf(y, parent)
         if len(X) <= self.min_samples_leaf:
-            return self._get_leaf(y)
+            return self._get_leaf(y, parent)
         if len(attr_list) == 0:
-            return self._get_leaf(y)
+            return self._get_leaf(y, parent)
         if len(y.unique()) == 1:
-            return self._get_leaf(y)
+            return self._get_leaf(y, parent)
 
         best_split_column, best_split_value, _ = self._get_best_split(
             X, y, attr_list)
 
+        freq = np.zeros(self.num_classes)
+        temp = y.to_numpy()
+
+        for i in range(self.num_classes):
+            freq[i] = np.sum(temp == i)
+
         dt = {
+            "parent": parent,
             "feature": best_split_column,
             "value": best_split_value,
-            "children": []
+            "children": [],
+            "freq": freq,
         }
 
         attr_list.remove(best_split_column)
@@ -107,7 +118,8 @@ class DecisionTree():
             cY = y[X[best_split_column] == value]
             if len(cX) == 0:
                 continue
-            child_tree = self._build_tree(cX, cY, depth + 1, attr_list.copy())
+            child_tree = self._build_tree(
+                cX, cY, depth + 1, dt, attr_list.copy())
             dt["children"].append((value, child_tree))
 
         return dt
@@ -140,7 +152,7 @@ class DecisionTree():
         best_split_value = y.value_counts().idxmax()
         return best_split_column, best_split_value, best_split_score
 
-    def _get_leaf(self, y: pd.Series) -> Dict:
+    def _get_leaf(self, y: pd.Series, parent: Dict = None) -> Dict:
         """
         Get the leaf node for the current node.
         Args:
@@ -149,10 +161,20 @@ class DecisionTree():
         Returns:
             Dict: Leaf node as a dictionary.
         """
+        freq = np.zeros(self.num_classes)
+        temp = y.to_numpy()
+
+        freq[0] = np.sum(temp == 0, axis=0)
+        freq[1] = np.sum(temp == 1, axis=0)
+        freq[2] = np.sum(temp == 2, axis=0)
+        freq[3] = np.sum(temp == 3, axis=0)
+
         return {
+            "parent": parent,
             "feature": None,
             "value": y.value_counts().idxmax(),
-            "children": []
+            "children": [],
+            "freq": freq,
         }
 
     def print_tree(self, labels: Dict[str, List[str]]) -> None:
@@ -202,10 +224,23 @@ class DecisionTree():
                      label=f"{labels[root['feature']][attr_val]}")
             self._print_tree(child_root, gra, labels)
 
-    def prune_tree(self, x_valid, y_valid):
-        self._prune_tree(self.tree, x_valid, y_valid)
+    def prune_tree(self, method='chi', x_valid=None, y_valid=None):
+        """
+        Prunes the decision tree using the validation set. or using chi square test.
+        Args:
+            method: The method used for pruning(chi or reduced-error) Defaults to 'chi'.
+            x_valid: Validation dataset if method is reduced-error.
+            y_valid: Validation target values if method is reduced-error.
+        """
+        if method == 'chi':
+            self._prune_tree2(self.tree)
+        elif method == 'reduced-error':
+            self._prune_tree(self.tree, x_valid, y_valid)
 
     def _prune_tree(self, root, x_valid, y_valid):
+        """
+        Utility function to prune the decision tree using reduced-error method.
+        """
         if len(root["children"]) == 0:
             return
         for _, child in root["children"]:
@@ -226,6 +261,35 @@ class DecisionTree():
             self.num_nodes += len(children)
         return
 
+    def _prune_tree2(self, root):
+        """
+        Utility function to prune the decision tree using chi square test.
+        """
+        if len(root["children"]) == 0:
+            return
+        for _, child in root["children"]:
+            self._prune_tree2(child)
+
+        ct_matrix = np.zeros((self.num_classes, len(root["children"])))
+        for i, (_, child) in enumerate(root["children"]):
+            ct_matrix[:, i] = child["freq"]
+
+        new_ct_matrx = []
+
+        for i in range(ct_matrix.shape[0]):
+            if ct_matrix[i, :].sum() != 0:
+                new_ct_matrx.append(ct_matrix[i, :])
+
+        new_ct_matrx = np.array(new_ct_matrx)
+        chi, p, dof, _ = chi2_contingency(new_ct_matrx)
+
+        if p >= 0.05:
+            self.num_nodes -= len(root["children"])
+            root["children"] = []
+            root["feature"] = None
+        return
+        ...
+
 
 if __name__ == "__main__":
     dataset = CarDataset(root="./dataset")
@@ -233,16 +297,16 @@ if __name__ == "__main__":
     (x_train, y_train), (x_valid, y_valid) = split_dataset(
         dataset.data, dataset.targets, 0.8)
     dt = DecisionTree(max_depth=6,
-                      min_samples_leaf=1, criterion="gini")
+                      min_samples_leaf=1, criterion="ig")
     dt.fit(x_train, y_train)
     predicts = dt.predict(x_valid)
 
     print((y_valid.to_numpy() == predicts.to_numpy()).sum() / len(y_valid))
     print(dt.num_nodes)
-    dt.print_tree(dataset.metadata)
+    # dt.print_tree(dataset.metadata)
 
-    dt.prune_tree(x_valid, y_valid)
+    dt.prune_tree('chi')
     predicts = dt.predict(x_valid)
     print((y_valid.to_numpy() == predicts.to_numpy()).sum() / len(y_valid))
-    dt.print_tree(dataset.metadata)
+    # dt.print_tree(dataset.metadata)
     print(dt.num_nodes)
