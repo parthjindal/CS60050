@@ -1,3 +1,4 @@
+from util.utility import shuffle_dataset, split_dataset
 import pandas as pd
 from util import information_gain, gini_gain
 import graphviz
@@ -11,7 +12,7 @@ class DecisionTree():
     Args:
         max_depth (int): Maximum depth of any branch in the Decision tree.Defaults to 10.
         min_samples_leaf (int): Minimum no. of samples for further splitting nodes else treated as a leave. Defaults to 1.
-        criterion (str): Criteria to select the attribute at a node(['gini', 'entropy']). Defaults to "gini".
+        criterion (str): Criteria to select the attribute at a node(['gini', 'ig']). Defaults to "gini".
     """
 
     def __init__(
@@ -25,6 +26,7 @@ class DecisionTree():
         self.criterion = criterion
         self.tree = None
         self.final_depth = 0
+        self.num_nodes = 0
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
         """
@@ -78,6 +80,7 @@ class DecisionTree():
         Returns:
             Dict: root of the decision tree as a dictionary.
         """
+        self.num_nodes += 1
         self.final_depth = max(self.final_depth, depth)
         if depth >= self.max_depth:
             return self._get_leaf(y)
@@ -126,7 +129,7 @@ class DecisionTree():
         for column in attr_list:
             if self.criterion == "gini":
                 score = gini_gain(X, column, y)
-            elif self.criterion == "entropy":
+            elif self.criterion == "ig":
                 score = information_gain(X, column, y)
             else:
                 raise ValueError("Invalid criterion")
@@ -199,13 +202,47 @@ class DecisionTree():
                      label=f"{labels[root['feature']][attr_val]}")
             self._print_tree(child_root, gra, labels)
 
+    def prune_tree(self, x_valid, y_valid):
+        self._prune_tree(self.tree, x_valid, y_valid)
+
+    def _prune_tree(self, root, x_valid, y_valid):
+        if len(root["children"]) == 0:
+            return
+        for _, child in root["children"]:
+            self._prune_tree(child, x_valid, y_valid)
+
+        curr_acc = (self.predict(x_valid).to_numpy()
+                    == y_valid.to_numpy()).mean()
+        children = root["children"]
+        feature = root["feature"]
+        root["children"] = []
+        root["feature"] = None
+        self.num_nodes -= len(children)
+        new_acc = (self.predict(x_valid).to_numpy()
+                   == y_valid.to_numpy()).mean()
+        if curr_acc > new_acc:
+            root["children"] = children
+            root["feature"] = feature
+            self.num_nodes += len(children)
+        return
+
 
 if __name__ == "__main__":
     dataset = CarDataset(root="./dataset")
-    X, y = dataset.data, dataset.targets
-    dt = DecisionTree(max_depth=5,
-                      min_samples_leaf=10, criterion="gini")
-    dt.fit(X, y)
-    predicts = dt.predict(X)
-    print((y == predicts).sum() / len(y))
+    shuffle_dataset(dataset)
+    (x_train, y_train), (x_valid, y_valid) = split_dataset(
+        dataset.data, dataset.targets, 0.8)
+    dt = DecisionTree(max_depth=6,
+                      min_samples_leaf=1, criterion="gini")
+    dt.fit(x_train, y_train)
+    predicts = dt.predict(x_valid)
+
+    print((y_valid.to_numpy() == predicts.to_numpy()).sum() / len(y_valid))
+    print(dt.num_nodes)
     dt.print_tree(dataset.metadata)
+
+    dt.prune_tree(x_valid, y_valid)
+    predicts = dt.predict(x_valid)
+    print((y_valid.to_numpy() == predicts.to_numpy()).sum() / len(y_valid))
+    dt.print_tree(dataset.metadata)
+    print(dt.num_nodes)
