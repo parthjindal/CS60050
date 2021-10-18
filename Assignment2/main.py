@@ -1,8 +1,7 @@
 from util import seed_everything, split_dataset,\
     shuffle_dataset, Vectorizer,\
-    get_cosine_similarity, get_euclidean_distance, \
-    get_manhattan_distance, MailDataset
-
+    get_cosine_score, get_euclidean_distance, \
+    get_manhattan_distance, MailDataset, get_metrics
 from knn import KNN
 import matplotlib.pyplot as plt
 import argparse
@@ -13,7 +12,7 @@ from tabulate import tabulate
 CRITERION = {
     "euclidean": get_euclidean_distance,
     "manhattan": get_manhattan_distance,
-    "cosine": get_cosine_similarity
+    "cosine": get_cosine_score
 }
 
 
@@ -24,11 +23,6 @@ def main(args: argparse.Namespace):
 
     X, Y = dataset.X, dataset.Y
     (x_train, y_train), (x_test, y_test) = split_dataset(X, Y, split_size=0.2)
-
-    x_train = x_train.to_numpy().astype(np.float32)
-    y_train = y_train.to_numpy().astype(np.int32)
-    x_test = x_test.to_numpy().astype(np.float32)
-    y_test = y_test.to_numpy().astype(np.int32)
 
     knn = KNN(x_train, y_train, criteria=CRITERION[args.criteria], k=args.k)
     y_pred = knn.predict(x_test)

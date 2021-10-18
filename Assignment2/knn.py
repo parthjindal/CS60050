@@ -1,26 +1,25 @@
 from typing import Callable
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from util import Vectorizer, MailDataset, get_euclidean_distance
 
 
 class KNN:
+
     def __init__(
         self,
         x_train: np.ndarray,
-        y_train: np.ndarray,
+        y_train: np.array,
         criteria: Callable,
         k: int,
     ) -> None:
 
         self.x_train = x_train
         self.y_train = y_train
+
         self.criteria = criteria
         self.k = k
 
-    def _predict_one(self, x_test: np.ndarray) -> np.ndarray:
-        x_test = x_test.reshape(1, -1)
+    def _predict_one(self, x_test: np.ndarray) -> np.ndarray:  # hack for mem-runout
+        x_test = x_test.reshape((1, -1))
         distances = self.criteria(x_test, self.x_train)
         min_indices = np.argsort(distances, axis=1)[:, :self.k]
         predictions = self.y_train[min_indices]
@@ -30,24 +29,32 @@ class KNN:
         return predict
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        predicts = []
-        for x in X:
-            predicts.append(self._predict_one(x))
+        if X.ndim == 1:
+            X = X.reshape((1, -1))
+        predicts = np.zeros(X.shape[0], dtype=np.int32)
+        for i in range(X.shape[0]):
+            predicts[i] = self._predict_one(X[i])
         return predicts
 
 
 def test():
-    dataset = MailDataset(root='./dataset')
-    x_train, y_train = dataset.X, dataset.Y
-    vectorizer = Vectorizer()
-    x_train = vectorizer.fit_transform(x_train).to_numpy().astype(np.float32)
-    y_train = y_train.to_numpy().astype(int)
+    from util import shuffle_dataset, split_dataset
+    from util import Vectorizer, MailDataset, get_euclidean_distance, get_manhattan_distance, get_cosine_score
+
+    vectorizer = Vectorizer(500)
+    dataset = MailDataset(root='./dataset', transform=vectorizer)
+    shuffle_dataset(dataset)
+
+    X, Y = dataset.X, dataset.Y
+    x_train = X[:int(0.8 * len(X))]
+    y_train = Y[:int(0.8 * len(X))]
+
     knn = KNN(x_train=x_train,
               y_train=y_train,
-              criteria=get_euclidean_distance,
-              k=1)
-    predicts = knn.predict(x_train[10:40])
-    print(f'Accuracy: {np.mean(predicts == y_train[10:40])}')
+              criteria=get_cosine_score,
+              k=11)
+    predicts = knn.predict(X[int(0.8 * len(X)):])
+    print(f'Accuracy: {np.mean(predicts == Y[int(0.8 * len(X)):])}')
 
 
 if __name__ == '__main__':

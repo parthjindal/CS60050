@@ -15,30 +15,15 @@ class MailDataset:
         "name": "spam_ham_dataset",
         "description": "Spam/Ham dataset",
         "length": None,
-        "labels": ["ham", "spam"],
+        "labels": ["ham", "spam"],  # 0: ham, 1: spam
     }
 
     __resources__ = [
         ("https://www.kaggle.com/venky73/spam-mails-dataset/download", "archive.zip")
     ]
 
-    @property
-    def X(self) -> pd.DataFrame:
-        return self.df.iloc[:, :-1]
-
-    @X.setter
-    def X(self, value: pd.DataFrame):
-        self.df = value
-
-    @property
-    def Y(self) -> pd.Series:
-        """
-        Returns the labels of the dataset (0 for ham, 1 for spam)
-        """
-        return self.df.iloc[:, -1]
-
     def __len__(self) -> int:
-        return len(self.df)
+        return len(self.X)
 
     def __init__(
         self,
@@ -47,6 +32,8 @@ class MailDataset:
     ):
         self.root = root
         self._metadata = MailDataset.__metadata__
+        self.X = None
+        self.Y = None
 
         if not self._sanity_check():
             raise RuntimeError("Dataset file not found")
@@ -59,12 +46,14 @@ class MailDataset:
         """
         Reads the dataset from the csv file
         """
-        self.df = pd.read_csv(
+        df = pd.read_csv(
             os.path.join(self.root, MailDataset.__filename__))
-        self.df.columns = MailDataset.__headers__
-        self.df.drop(columns=["_", "label"], inplace=True)
+        df.columns = MailDataset.__headers__
+        df.drop(columns=["_", "label"], inplace=True)
+        self._metadata["length"] = len(df)
 
-        self._metadata["length"] = len(self.df)
+        self.X = df['text'].to_numpy()
+        self.Y = df['label_num'].to_numpy()
 
     def _sanity_check(self) -> bool:
         """
@@ -76,7 +65,9 @@ class MailDataset:
 
 
 def test():
-    dataset = MailDataset(root="../dataset")
+    from utility import Vectorizer
+    vectorizer = Vectorizer(max_features=1000)
+    dataset = MailDataset(root="../dataset", transform=vectorizer)
     print(f"Length of dataset: {len(dataset)}")
 
 
