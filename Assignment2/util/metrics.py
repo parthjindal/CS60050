@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import stats
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 
 def get_metrics(
@@ -25,7 +25,7 @@ def get_metrics(
         elif metric == "Recall":
             results[metric] = recall(y_pred, y_true)
         elif metric == "F1":
-            results[metric] = f1(y_pred, y_true)
+            results[metric] = f1_score(y_pred, y_true)
         elif metric == "Confusion Matrix":
             results[metric] = confusion_matrix(y_pred, y_true, classes)
         else:
@@ -66,7 +66,7 @@ def recall(y_pred: np.ndarray, y_true: np.ndarray) -> float:
     return true_pos / (np.sum(y_true))
 
 
-def f1(y_pred: np.ndarray, y_true: np.ndarray) -> float:
+def f1_score(y_pred: np.ndarray, y_true: np.ndarray) -> float:
     """
     Computes the recall score for a given set of labels.
     Recall score = true_pos / (true_pos + false_neg)
@@ -87,3 +87,15 @@ def confusion_matrix(y_pred: np.ndarray, y_true: np.ndarray, classes: List[str])
     for i in range(len(y_pred)):
         confusion_matrix[y_true[i]][y_pred[i]] += 1
     return confusion_matrix
+
+
+def find_ci_interval(data: np.ndarray, confidence=0.95) -> Tuple[float, float, float]:
+    """
+    Finds the confidence interval for a given dataset of a estimator.
+    """
+    if isinstance(data, np.ndarray) == False:
+        data = np.array(data)
+    n = len(data)
+    mean, std = data.mean(axis=0), data.std(axis=0)
+    h = std * stats.t.ppf((1+confidence)/2., n-1)
+    return mean, (mean-h, mean+h)

@@ -1,7 +1,6 @@
+import random
 import numpy as np
 from typing import Tuple
-import random
-from scipy.sparse import data
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -51,7 +50,7 @@ def split_dataset(
     return (train_data, train_targets), (valid_data, valid_targets)
 
 
-def get_cosine_score(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+def get_cosine_score(x: np.ndarray, y: np.ndarray, *args, **kwargs) -> np.ndarray:
     """
     Computes the cosine score between two vectors.
     Args:
@@ -65,34 +64,20 @@ def get_cosine_score(x: np.ndarray, y: np.ndarray) -> np.ndarray:
                     np.linalg.norm(y.T, axis=0, keepdims=True, ord=2) + 1e-8))
 
 
-def get_euclidean_distance(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+def minkowski_distance(x: np.ndarray, y: np.ndarray, p=2, *args, **kwargs) -> np.ndarray:
     """
-    Computes the euclidean distance between two vectors.
+    Computes the pth order minkowski distance between two vectors.
     Args:
-        x: A numpy array of shape (x_samples, n_features)
-        y: A numpy array of shape (y_samples, n_features)
+       x: A numpy array of shape (x_samples, n_features)
+       y: A numpy array of shape (y_samples, n_features)
     Returns:
-        A numpy array of shape (x_samples, y_samples)
+       A numpy array of shape (x_samples, y_samples)
     """
     x = x[..., np.newaxis]
     y = y[..., np.newaxis]
     # use with caution: may run out of memory (super-fast though xD)
-    return np.linalg.norm(x - y.T, axis=1, ord=2)
-
-
-def get_manhattan_distance(x: np.ndarray, y: np.ndarray):
-    """
-    Computes the manhattan distance between two vectors.
-    Args:
-        x: A numpy array of shape (x_samples, n_features)
-        y: A numpy array of shape (y_samples, n_features)
-    Returns:
-        A numpy array of shape (x_samples, y_samples)
-    """
-    x = x[..., np.newaxis]
-    y = y[..., np.newaxis]
-    # use with caution: may run out of memory (super-fast though xD)
-    return np.linalg.norm(x - y.T, axis=1, ord=1)
+    # todo: add a (m * n * k) <= threshold and if exceeds do simple iter
+    return np.linalg.norm(x - y.T, axis=1, ord=p)
 
 
 class Vectorizer:
@@ -119,19 +104,27 @@ class Vectorizer:
     def fit_transform(self, data: np.ndarray) -> np.ndarray:
         return self.vectorizer.fit_transform(data).toarray()
 
+    def transform(self, data: np.ndarray) -> np.ndarray:
+        return self.vectorizer.transform(data).toarray()
+
     __call__ = fit_transform
 
 
 def test():
-    from dataset import MailDataset
-    vectorizer = Vectorizer(max_features=100000)
-    data = MailDataset("../dataset", vectorizer)
-    shuffle_dataset(data)
-    (x_train, y_train), (x_test, y_test) = split_dataset(
-        data.X, data.Y, split_size=0.2)
-    print(x_train.shape, x_test.shape)
-    # for i in range(len(data)):
-    #   assert ~((data.X[i] == 0.).all()), f"{i}, {data.X[i]}"
+    from scipy.spatial import distance_matrix
+    a = np.random.randn(100, 50)
+    b = np.random.randn(200, 50)
+    assert (minkowski_distance(a, b) == distance_matrix(a, b)).all()
+    print("Compute distance test passed")
+
+    from dataset import MailDataset as Dataset
+    dataset = Dataset("../dataset")
+    head = dataset.X[:5].copy()
+    shuffle_dataset(dataset)
+    head2 = dataset.X[:5].copy()
+    assert (head != head2).any()
+    print("Shuffle dataset test passed")
 
 
-# test()
+if __name__ == "__main__":
+    test()
