@@ -87,7 +87,7 @@ def compare_metrics(args, metrics=["cosine", "euclidean", "manhattan"]):
         plt.ylabel("Accuracy")
         plt.title(f"Accuracy vs K for metric: {metric}")
         plt.show()
-        fig.savefig(f"{metric}.png")
+        fig.savefig(f"results/{metric}.png")
 
 
 def average_runs(args, num_runs=10):
@@ -110,8 +110,8 @@ def average_runs(args, num_runs=10):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="KNN")
-    parser.add_argument("--n", type=int, default=5, help="Number of neighbors")
-    parser.add_argument("--metric", type=str, default="euclidean",
+    parser.add_argument("--n", type=int, default=31, help="Number of neighbors")
+    parser.add_argument("--metric", type=str, default="cosine",
                         help="Distance metric", choices=["cosine", "euclidean", "manhattan"])
     parser.add_argument("--weighted", type=bool, default=False,
                         help="Weighted KNN")
@@ -129,4 +129,4 @@ if __name__ == "__main__":
     seed_everything(args.seed)
 
     main(args)
-    # compare_metrics(args, metrics=["cosine"])
+    compare_metrics(args, metrics=["cosine", "euclidean", "manhattan"])

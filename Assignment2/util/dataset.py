@@ -66,13 +66,3 @@ class MailDataset:
             return False
         return True
 
-
-def test():
-    from utility import Vectorizer
-    vectorizer = Vectorizer(max_features=1000)
-    dataset = MailDataset(root="../dataset", transform=vectorizer)
-    print(f"Length of dataset: {len(dataset)}")
-
-
-if __name__ == "__main__":
-    test()

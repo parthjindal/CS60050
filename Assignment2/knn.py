@@ -1,7 +1,6 @@
 import numpy as np
 from util import get_cosine_score, minkowski_distance
 from typing import Callable, Tuple, Union
-import time
 
 
 class KNN:
@@ -107,36 +106,3 @@ class KNN:
                 distances[i, min_indices[i]], min_indices[i], self.weighted)
         return predicts
 
-
-def test():
-    from util import MailDataset, Vectorizer, shuffle_dataset
-    from sklearn.neighbors import KNeighborsClassifier
-
-    vectorizer = Vectorizer(200, 1, 1.0)
-    dataset = MailDataset(root='./dataset', transform=vectorizer)
-    shuffle_dataset(dataset)
-
-    X, Y = dataset.X, dataset.Y
-    x_train = X[:int(0.8 * len(X))]
-    y_train = Y[:int(0.8 * len(X))]
-    n_neighbours = 13
-
-    knn = KNN(x_train=x_train,
-              y_train=y_train,
-              metric="manhattan",
-              n_neighbours=n_neighbours, weighted=False)
-
-    knn2 = KNeighborsClassifier(n_neighbors=n_neighbours, metric="manhattan")
-    knn2.fit(x_train, y_train)
-
-    predicts = knn.predict(X[int(0.8 * len(X)):])
-    predicts2 = knn2.predict(X[int(0.8 * len(X)):])
-
-    print(
-        f'Implemented KNN Accuracy: {np.mean(predicts == Y[int(0.8 * len(X)):])}')
-    print(
-        f'Sklearn KNN Accuracy: {np.mean(predicts2 == Y[int(0.8 * len(X)):])}')
-
-
-if __name__ == '__main__':
-    test()

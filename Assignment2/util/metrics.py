@@ -1,5 +1,4 @@
 import numpy as np
-from scipy import stats
 from typing import List, Dict, Tuple
 
 
@@ -87,15 +86,3 @@ def confusion_matrix(y_pred: np.ndarray, y_true: np.ndarray, classes: List[str])
     for i in range(len(y_pred)):
         confusion_matrix[y_true[i]][y_pred[i]] += 1
     return confusion_matrix
-
-
-def find_ci_interval(data: np.ndarray, confidence=0.95) -> Tuple[float, float, float]:
-    """
-    Finds the confidence interval for a given dataset of a estimator.
-    """
-    if isinstance(data, np.ndarray) == False:
-        data = np.array(data)
-    n = len(data)
-    mean, std = data.mean(axis=0), data.std(axis=0)
-    h = std * stats.t.ppf((1+confidence)/2., n-1)
-    return mean, (mean-h, mean+h)

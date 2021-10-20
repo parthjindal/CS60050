@@ -108,23 +108,3 @@ class Vectorizer:
         return self.vectorizer.transform(data).toarray()
 
     __call__ = fit_transform
-
-
-def test():
-    from scipy.spatial import distance_matrix
-    a = np.random.randn(100, 50)
-    b = np.random.randn(200, 50)
-    assert (minkowski_distance(a, b) == distance_matrix(a, b)).all()
-    print("Compute distance test passed")
-
-    from dataset import MailDataset as Dataset
-    dataset = Dataset("../dataset")
-    head = dataset.X[:5].copy()
-    shuffle_dataset(dataset)
-    head2 = dataset.X[:5].copy()
-    assert (head != head2).any()
-    print("Shuffle dataset test passed")
-
-
-if __name__ == "__main__":
-    test()
