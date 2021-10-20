@@ -1,5 +1,10 @@
-### ISSUES  
-1. Look into the vectorizer still producing 0 vectors
-2. Maybe try to clean up the corpus before vectorizing
-3. Look into other ways to vectorize the corpus
-4. Switch form pandas to numpy everywhere
+# Machine Learning Assignment 2
+## Instructions
+1. To install the required packages, run the following command:
+```
+pip install -r requirements.txt
+```
+2. To run the code, run the following command:
+```
+python3 main.py
+```
