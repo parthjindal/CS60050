@@ -1,6 +1,7 @@
 import numpy as np
 from util import get_cosine_score, minkowski_distance
 from typing import Callable, Tuple, Union
+import time
 
 
 class KNN:
@@ -23,7 +24,7 @@ class KNN:
             criteria : Either a string from ['euclidean', 'cosine', 'manhattan'] or a user defined callable
             n_neighbors : Number of neighbors to use for prediction
             weighted : Whether to use weighted voting or not (Default: False)
-            method : Either 'brute' or 'cache' (Default: 'brute')
+            method : Either 'brute' or 'cached' (Default: 'brute')
         """
 
         self.x_train = x_train
@@ -72,19 +73,18 @@ class KNN:
             n_neighbours = self.n_neighbours
         if X.ndim == 1:
             X = X.reshape((1, -1))
-        if self.metric == "cosine":
-            distances = self.criteria(X, self.x_train, **self._fnkwargs)
-        elif self.metric in ["euclidean", "manhattan"]:
+        if self.metric in ["euclidean", "manhattan"]:
             distances = self._compute_chunked_distance(X)
         else:
-            distances = self.criteria(X, self.x_train, **self._fnkwargs)
+            distances = self.criteria(
+                X, self.x_train, **self._fnkwargs)  # cosine or custom
         min_indices = np.argsort(distances, axis=1)[:, :n_neighbours]
         return distances, min_indices
 
-    def _predict_one(self, x: np.ndarray, distances, min_indices, weighted=False) -> np.ndarray:
+    def _predict_one(self, distances, min_indices, weighted=False) -> np.ndarray:
         votes = self.y_train[min_indices]
         if weighted:
-            weights = 1 / (distances ** 2 + 1e-8)
+            weights = 1 / ((distances ** 2) + 1e-8)
             return np.argmax(np.bincount(votes, weights=weights))
         else:
             return np.argmax(np.bincount(votes))
@@ -102,38 +102,40 @@ class KNN:
             distances[...] = self._dst_mtrx
             min_indices[...] = np.argsort(distances, axis=1)[
                 :, :self.n_neighbours]
-        votes = self.y_train[min_indices]
-
         for i in range(X.shape[0]):
             predicts[i] = self._predict_one(
-                X[i], distances[i, min_indices[i]], min_indices[i], self.weighted)
+                distances[i, min_indices[i]], min_indices[i], self.weighted)
         return predicts
 
 
 def test():
-    from util import shuffle_dataset
-    from util import MailDataset, Vectorizer
-    # import KnearestNeighbour from sklearn
+    from util import MailDataset, Vectorizer, shuffle_dataset
     from sklearn.neighbors import KNeighborsClassifier
-    vectorizer = Vectorizer(1000, 1, 1.0)
 
+    vectorizer = Vectorizer(200, 1, 1.0)
     dataset = MailDataset(root='./dataset', transform=vectorizer)
     shuffle_dataset(dataset)
 
     X, Y = dataset.X, dataset.Y
     x_train = X[:int(0.8 * len(X))]
     y_train = Y[:int(0.8 * len(X))]
+    n_neighbours = 13
 
     knn = KNN(x_train=x_train,
               y_train=y_train,
-              metric="cosine",
-              n_neighbours=11, weighted=False)
-    OG_knn = KNeighborsClassifier(n_neighbors=51, metric="cosine")
-    OG_knn.fit(x_train, y_train)
+              metric="manhattan",
+              n_neighbours=n_neighbours, weighted=False)
+
+    knn2 = KNeighborsClassifier(n_neighbors=n_neighbours, metric="manhattan")
+    knn2.fit(x_train, y_train)
+
     predicts = knn.predict(X[int(0.8 * len(X)):])
-    predicts_2 = OG_knn.predict(X[int(0.8 * len(X)):])
-    print(f'Accuracy: {np.mean(predicts == Y[int(0.8 * len(X)):])}')
-    print(f'Accuracy: {np.mean(predicts_2 == Y[int(0.8 * len(X)):])}')
+    predicts2 = knn2.predict(X[int(0.8 * len(X)):])
+
+    print(
+        f'Implemented KNN Accuracy: {np.mean(predicts == Y[int(0.8 * len(X)):])}')
+    print(
+        f'Sklearn KNN Accuracy: {np.mean(predicts2 == Y[int(0.8 * len(X)):])}')
 
 
 if __name__ == '__main__':

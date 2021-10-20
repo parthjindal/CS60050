@@ -59,9 +59,9 @@ def get_cosine_score(x: np.ndarray, y: np.ndarray, *args, **kwargs) -> np.ndarra
     Returns:
         A numpy array of shape (x_samples, y_samples)
     """
-    return -np.abs((x @ y.T) /
-                   (np.linalg.norm(x, axis=1, keepdims=True, ord=2) *
-                    np.linalg.norm(y.T, axis=0, keepdims=True, ord=2) + 1e-8))
+    return -((x @ y.T) /
+             (np.linalg.norm(x, axis=1, keepdims=True, ord=2) *
+              np.linalg.norm(y.T, axis=0, keepdims=True, ord=2) + 1e-8))
 
 
 def minkowski_distance(x: np.ndarray, y: np.ndarray, p=2, *args, **kwargs) -> np.ndarray:

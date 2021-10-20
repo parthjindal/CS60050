@@ -1,4 +1,3 @@
-from re import M
 from util import seed_everything, split_dataset,\
     shuffle_dataset, Vectorizer, MailDataset, get_metrics, accuracy
 from knn import KNN
@@ -6,14 +5,15 @@ import argparse
 import numpy as np
 from tabulate import tabulate
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 def main(args: argparse.Namespace):
+    print("---------Results on 80/20 Split---------")
     # vectorizer (TF_IDF)
     vectorizer = Vectorizer(max_features=args.max_features,
                             min_df=args.min_df,
                             max_df=args.max_df)
-
     dataset = MailDataset(root="./dataset")
     shuffle_dataset(dataset)
     (x_train, y_train), (x_test, y_test) = split_dataset(
@@ -56,37 +56,38 @@ def compare_metrics(args, metrics=["cosine", "euclidean", "manhattan"]):
     x_test = vectorizer.transform(x_test)  # transform test data
 
     results = {}
-    K_range = np.arange(1, 200)
+    K_range = np.arange(1, 4000, step=2)
 
     for metric in metrics:
+        best_acc = 0
+        best_k = 1
+        print(f"Computing results for metric: {metric} ...")
         results[metric] = []
         # precompute distance matrices,sorted-indices for all metrics
         knn = KNN(x_train, y_train, metric=metric, n_neighbours=len(
             x_train), weighted=False, method="brute")
         dst_mtrx, min_indices = knn.neighbours(x_test)
-
-        for k in K_range:
+        for k in tqdm(K_range, desc="K"):
             predicts = np.zeros(len(x_test), dtype=int)
             for i in range(len(x_test)):
                 kmin_indices = min_indices[i][:k]
                 kdist_mtrx = dst_mtrx[i][kmin_indices]
                 predicts[i] = knn._predict_one(
-                    x_test[i], kdist_mtrx, kmin_indices, weighted=False)
+                    kdist_mtrx, kmin_indices, weighted=False)
             acc = accuracy(y_test, predicts)
-            print(f"{metric} K={k}: {acc*100:.2f}%")
             results[metric].append(acc)
-
-    # plot result for each metric and save figures for each metric
-    for metric in metrics:
+            if acc > best_acc:
+                best_acc = acc
+                best_k = k
+        print(f"Best accuracy: {best_acc*100:.2f}%, Best-k: {best_k}")
         fig = plt.figure()
         plt.plot(K_range, results[metric], label=metric)
+        plt.legend()
         plt.xlabel("K")
         plt.ylabel("Accuracy")
-        plt.title(f"Accuracy vs K for {metric}")
-        plt.legend()
+        plt.title(f"Accuracy vs K for metric: {metric}")
+        plt.show()
         fig.savefig(f"{metric}.png")
-
-    print("Comparing metrics completed!")
 
 
 def average_runs(args, num_runs=10):
@@ -105,10 +106,6 @@ def average_runs(args, num_runs=10):
         results.append(get_metrics(y_test, y_pred, [
                        "Accuracy", "Precision", "Recall", "F1"]))
     print(tabulate(results, headers=["Accuracy", "Precision", "Recall", "F1"]))
-
-
-def compare_measures(args, measures=["euclidean", "manhattan", "cosine"]):
-    ...
 
 
 if __name__ == "__main__":
@@ -131,6 +128,5 @@ if __name__ == "__main__":
 
     seed_everything(args.seed)
 
-    print("---------Results on 80/20 Split---------")
-    # main(args)
-    compare_metrics(args, metrics=["manhattan", "cosine", "euclidean"])
+    main(args)
+    # compare_metrics(args, metrics=["cosine"])
