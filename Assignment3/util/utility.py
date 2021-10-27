@@ -1,13 +1,10 @@
-import os
 import random
-import sys
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Callable
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
 from .dataset import SatelliteDataset as Dataset, DatasetTransform
 from .metrics import get_metrics
 
@@ -21,14 +18,23 @@ def seed_everything(seed):
 
 
 def create_dataloaders(
-    root_dir: str,
+    train_dataset: Dataset,
+    test_dataset: Dataset,
     shuffle: bool = True,
     batch_size: int = 1,
-    test: bool = True,
-) -> Tuple[DataLoader, Optional[DataLoader]]:
+) -> Tuple[DataLoader, DataLoader]:
 
-    train_dataset = Dataset(root_dir, True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,
+                              shuffle=shuffle)
 
+    test_loader = DataLoader(test_dataset, batch_size=batch_size)
+    return train_loader, test_loader
+
+
+def preprocess_dataset(train_dataset: Dataset,) -> Tuple[Callable, Callable]:
+    """
+    Does mean centering and std-dev scaling and returns the transform functions
+    """
     mean = np.empty((train_dataset.data.shape[1],), dtype=np.float32)
     std_dev = np.empty_like(mean)
 
@@ -42,19 +48,7 @@ def create_dataloaders(
     def target_transform(x):
         return x-1 if x < 6 else x-2
 
-    train_dataset.transform = transform
-    train_dataset.target_transform = target_transform
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,
-                              shuffle=shuffle)
-    if test is True:
-        test_dataset = Dataset(root_dir, False,
-                               transform=transform,
-                               target_transform=target_transform)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size)
-        return train_loader, test_loader
-    else:
-        return train_loader
+    return transform, target_transform
 
 
 @torch.enable_grad()
@@ -92,6 +86,7 @@ def train(
     return losses, num_correct.item() / num_data
 
 
+@torch.no_grad()
 def test(
     model: nn.Module,
     dataloader: DataLoader,
@@ -99,18 +94,29 @@ def test(
     fast_dev_run: bool = False,
     metrics: List[str] = ["Accuracy"]
 ):
+    loss_fn = nn.CrossEntropyLoss()
     predicts = []
     y_true = []
+    losses = []
+
     for (x, y) in dataloader:
         x = x.to(device)
         y = y.to(device)
         out = model(x)
+
+        loss = loss_fn(out, y)
         y_pred = torch.argmax(out, 1)
+
         predicts.extend(y_pred.tolist())
         y_true.extend(y.tolist())
+        losses.append(loss.item())
 
         if fast_dev_run is True:
             break
 
     results = get_metrics(predicts, y_true, metrics)
+
+    if "Loss" in metrics:
+        results["Loss"] = np.mean(losses)
+
     return results

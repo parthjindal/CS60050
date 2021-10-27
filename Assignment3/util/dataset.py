@@ -1,9 +1,10 @@
 import pandas as pd
 import os
 import urllib3
-from typing import Optional, Any, Callable, Tuple
+from typing import Optional, Any, Callable, Tuple, List
 import torch.utils.data as data
 import numpy as np
+from sklearn.decomposition import PCA
 
 
 class SatelliteDataset(data.Dataset):
@@ -90,50 +91,72 @@ class SatelliteDataset(data.Dataset):
 class DatasetTransform:
     """
     Transformation dataset used for mean centering and scaling
-    
+
     Args:
     mean: mean-array of input data
     std_dev: standard-dev of input data
     """
+
     def __init__(self, mean, std_dev):
         if isinstance(mean, np.ndarray) is False:
-            mean= np.array(mean, dtype= np.float32)
+            mean = np.array(mean, dtype=np.float32)
         if isinstance(std_dev, np.ndarray):
-            std_dev= np.array(std_dev, dtype= np.float32)
+            std_dev = np.array(std_dev, dtype=np.float32)
 
         self.mean = mean
-        self.std_dev = std_dev + 1e-9 # for zero
-    
+        self.std_dev = std_dev + 1e-9  # for zero
+
     def __call__(self, x: np.ndarray) -> np.ndarray:
         return (x - self.mean) / (self.std_dev)
 
 
+class MultiTransforms:
+    def __init__(self, transforms: List[Callable]):
+        self.transforms = transforms
+
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        for transform in self.transforms:
+            x = transform(x)
+        return x
+
+
+class TransformPCA:
+    """ 
+    Wrapper for PCA to fit into transform semantics of SatelliteDataset and torch
+    """
+
+    def __init__(self, pca: PCA):
+        self.pca = pca
+
+    def __call__(self, x: np.ndarray) -> np.ndarray:
+        return self.pca.transform(x).to_numpy()
+
+
 if __name__ == "__main__":
-    dataset= SatelliteDataset(root="../dataset",
+    dataset = SatelliteDataset(root="../dataset",
                                train=True,
                                download=True)
-    x, y= dataset[0]
+    x, y = dataset[0]
     print(f"Length of dataset: {len(dataset)}")
     print(f"Sample from dataset x: {x}, y: {y}")
 
-    mean= np.zeros_like(x)
-    std_dev= np.zeros_like(x)
-   
+    mean = np.zeros_like(x)
+    std_dev = np.zeros_like(x)
+
     for i in range(4):
-        data= dataset.data[:,i::4]
-        mean[i::4]= np.mean(data,dtype= np.float32)
-        std_dev[i::4]= np.sqrt(np.var(data,dtype= np.float32))
+        data = dataset.data[:, i::4]
+        mean[i::4] = np.mean(data, dtype=np.float32)
+        std_dev[i::4] = np.sqrt(np.var(data, dtype=np.float32))
 
     print("Mean array: {}".format(mean))
     print("Std-dev array: {}".format(std_dev))
 
-    transform= DatasetTransform(mean, std_dev)
-    test_dataset= SatelliteDataset(root= "../dataset",
-                                    train= False,
-                                    download= False,
-                                    transform= transform,
-                                    target_transform= lambda x: (x-1))
-    
-    x, y= test_dataset[0]
-    print(f"Transformed Sample from dataset x: {x}, y: {y}")
+    transform = DatasetTransform(mean, std_dev)
+    test_dataset = SatelliteDataset(root="../dataset",
+                                    train=False,
+                                    download=False,
+                                    transform=transform,
+                                    target_transform=lambda x: (x-1))
 
+    x, y = test_dataset[0]
+    print(f"Transformed Sample from dataset x: {x}, y: {y}")

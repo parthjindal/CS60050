@@ -11,7 +11,7 @@ def get_metrics(
 ) -> Dict:
 
     if isinstance(y_pred, np.ndarray) is False:
-        y_pred = np.array(y_pred) 
+        y_pred = np.array(y_pred)
     if isinstance(y_true, np.ndarray) is False:
         y_true = np.array(y_true)
 
@@ -43,9 +43,6 @@ def get_metrics(
         elif metric == 'Confusion Matrix':
             results[metric] = confusion_matrix(
                 y_true, y_pred, labels=classes)
-
-        else:
-            raise ValueError('Unknown metric: {}'.format(metric))
     return results
 
 

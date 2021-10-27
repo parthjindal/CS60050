@@ -1,4 +1,4 @@
-from util import create_dataloaders, seed_everything, train, test
+from util import create_dataloaders, seed_everything, train, test, preprocess_dataset, MultiTransforms, TransformPCA, SatelliteDataset
 from models.MLP import MLP0, MLP1, MLP2
 import argparse
 import matplotlib.pyplot as plt
@@ -6,7 +6,7 @@ import numpy as np
 import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-
+from sklearn.decomposition import PCA
 seed_everything(42)
 IN_DIMS = 36
 OUT_DIMS = 6
@@ -50,7 +50,7 @@ def fit(
 
     for i in tqdm(range(args.max_epochs)):
         loss, train_acc = train(model, train_loader,
-                        lr=args.lr, device=args.device)
+                                lr=args.lr, device=args.device)
         loss = np.mean(loss)
         losses.append(loss)
         train_accuracies.append(train_acc)
@@ -71,7 +71,7 @@ def fit(
                 break
         else:
             early_stop_count = 0
-    
+
     if args.plot is True:
         plt.plot(train_accuracies)
         plt.xlabel("Epochs")
@@ -98,7 +98,25 @@ def main(args: argparse.Namespace):
         MLP2(IN_DIMS, OUT_DIMS, 3, 2)]
     lrs = []
     model = MLP2(IN_DIMS, OUT_DIMS, 3, 2).to("cuda:0")
-    train_loader, test_loader = create_dataloaders("./dataset", True, 64, True)
+
+    train_dataset = SatelliteDataset("./dataset")
+    mtransform, mtarget_transform = preprocess_dataset(train_dataset)
+
+    pca = PCA(2)
+    mpca.fit(train_dataset.data)
+
+    pca_transform = TransformPCA(pca)
+    data_transforms = MultiTransforms([mtransform, pca_transform])
+
+    train_dataset.transform = data_transforms
+    train_dataset.target_transform = mtarget_transform
+
+    test_dataset = SatelliteDataset(
+        "./dataset", False, transform=data_transforms, target_transform=mtarget_transform)
+
+    train_loader, test_loader = create_dataloaders(
+        train_dataset, test_dataset, shuffle=True, batch_size=1)
+
     args = argparse.Namespace(max_epochs=200, lr=1e-3, device="cuda:0",
                               verbose=True, log_freq=1, test_freq=1,
                               plot=True)
