@@ -41,7 +41,7 @@ def preprocess_dataset(train_dataset: Dataset,) -> Tuple[Callable, Callable]:
     for i in range(NUM_SPECTRAL_BANDS):
         data = train_dataset.data[:, i::NUM_SPECTRAL_BANDS]
         mean[i::NUM_SPECTRAL_BANDS] = np.mean(data)
-        std_dev = np.sqrt(np.var(data))
+        std_dev[i::NUM_SPECTRAL_BANDS] = np.sqrt(np.var(data))
 
     transform = DatasetTransform(mean, std_dev)
 
