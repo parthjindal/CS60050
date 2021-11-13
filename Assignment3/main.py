@@ -7,31 +7,10 @@ import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from sklearn.decomposition import PCA
+
 seed_everything(42)
 IN_DIMS = 36
 OUT_DIMS = 6
-
-# train_loader, test_loader = create_dataloaders("./dataset", True, 1, True)
-# model = MLP2(IN_DIMS, OUT_DIMS, 3, 2).to("cuda:0")
-#
-# losses = []
-# accuracies = []
-#
-# for _ in range(1000):
-#    loss, acc = train(model, train_loader, device='cuda:0')
-#    losses.append(np.mean(loss))
-#    acc = test(model, test_loader, "cuda:0",
-#               fast_dev_run=True,
-#               metrics=["Accuracy"])["Accuracy"]
-#
-#    print("Accuracy: {}".format(acc))
-#    accuracies.append(acc)
-#
-# plt.plot(losses)
-# plt.show()
-#
-# plt.plot(accuracies)
-# plt.show()
 
 
 def fit(
@@ -103,7 +82,7 @@ def main(args: argparse.Namespace):
     mtransform, mtarget_transform = preprocess_dataset(train_dataset)
 
     pca = PCA(2)
-    mpca.fit(train_dataset.data)
+    pca.fit(train_dataset.data)
 
     pca_transform = TransformPCA(pca)
     data_transforms = MultiTransforms([mtransform, pca_transform])
