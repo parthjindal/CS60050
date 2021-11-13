@@ -17,7 +17,7 @@ class MLP1(nn.Module):
         super(MLP1, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(in_dims, nodes),
-            nn.ReLU(),
+            nn.Sigmoid(),
             nn.Linear(nodes, out_dims),
         )
 
@@ -30,9 +30,9 @@ class MLP2(nn.Module):
         super(MLP2, self).__init__()
         self.layers = nn.Sequential(
             nn.Linear(in_dims, n1),
-            nn.ReLU(),
+            nn.Sigmoid(),
             nn.Linear(n1, n2),
-            nn.ReLU(),
+            nn.Sigmoid(),
             nn.Linear(n2, out_dims),
         )
 
